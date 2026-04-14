@@ -1,0 +1,180 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#define MAX 10   // Maximum parking slots
+#define PASSWORD "admin123"  // Admin password
+
+struct Vehicle {
+    char num[20];
+    char type[10];
+    time_t entryTime;  // stores time in seconds
+};
+
+int count = 0;  // Current vehicles
+struct Vehicle park[MAX];
+
+void login();
+void vehicleEntry();
+void vehicleExit();
+void showStatus();
+void saveToFile();
+double calculateFee(time_t entry, time_t exit);
+
+int main() {
+    int choice;
+    login(); // login first
+
+    while (1) {
+        printf("\n========== VEHICLE PARKING SYSTEM ==========\n");
+        printf("1. Park Vehicle\n");
+        printf("2. Exit Vehicle\n");
+        printf("3. Show Parking Status\n");
+        printf("4. Save & Exit\n");
+        printf("--------------------------------------------\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                vehicleEntry();
+                break;
+            case 2:
+                vehicleExit();
+                break;
+            case 3:
+                showStatus();
+                break;
+            case 4:
+                saveToFile();
+                printf("\nData saved. Thank you!\n");
+                exit(0);
+            default:
+                printf("\nInvalid Choice! Try Again.\n");
+        }
+    }
+    return 0;
+}
+
+// Admin login
+void login() {
+    char pass[20];
+
+    printf("\n===== ADMIN LOGIN =====\n");
+
+    while (1) {
+        printf("Enter Password: ");
+        scanf("%s", pass);
+
+        if (strcmp(pass, PASSWORD) == 0) {
+            printf("Login Successful!\n");
+            break;
+        } else {
+            printf("Wrong Password! Try Again.\n");
+        }
+    }
+}
+
+// Add a vehicle
+void vehicleEntry() {
+    if (count >= MAX) {
+        printf("\nParking Full! No Slot Available.\n");
+        return;
+    }
+
+    printf("\n--- Vehicle Entry ---\n");
+    printf("Enter Vehicle Number: ");
+    scanf("%s", park[count].num);
+    printf("Enter Vehicle Type (Car/Bike/Bus): ");
+    scanf("%s", park[count].type);
+
+    park[count].entryTime = time(NULL);  // store entry time
+    count++;
+
+    printf("\nVehicle Parked Successfully!\n");
+}
+
+// Remove a vehicle + show fee
+void vehicleExit() {
+    if (count == 0) {
+        printf("\nNo Vehicles Parked.\n");
+        return;
+    }
+
+    char num[20];
+    printf("\n--- Vehicle Exit ---\n");
+    printf("Enter Vehicle Number: ");
+    scanf("%s", num);
+
+    for (int i = 0; i < count; i++) {
+        if (strcmp(park[i].num, num) == 0) {
+            time_t exitTime = time(NULL);
+            double fee = calculateFee(park[i].entryTime, exitTime);
+
+            printf("\nVehicle Found!\n");
+            printf("Type: %s\n", park[i].type);
+            printf("Parking Fee: ₹%.2f\n", fee);
+
+            // Remove vehicle by shifting array
+            for (int j = i; j < count - 1; j++)
+                park[j] = park[j + 1];
+
+            count--;
+            printf("Vehicle Removed Successfully!\n");
+            return;
+        }
+    }
+    printf("\nVehicle Not Found!\n");
+}
+
+// Show all parked vehicles
+void showStatus() {
+    if (count == 0) {
+        printf("\nNo Vehicles Parked.\n");
+        return;
+    }
+
+    printf("\n========== CURRENTLY PARKED VEHICLES ==========\n");
+    printf("No.\tNumber\t\tType\t\tEntry Time\n");
+    printf("------------------------------------------------\n");
+
+    for (int i = 0; i < count; i++) {
+        char *timeStr = ctime(&park[i].entryTime);
+        timeStr[strlen(timeStr) - 1] = '\0'; // remove newline
+
+        printf("%d\t%s\t\t%s\t\t%s\n",
+               i + 1,
+               park[i].num,
+               park[i].type,
+               timeStr);
+    }
+}
+
+// Save data to file
+void saveToFile() {
+    FILE *fp = fopen("parking_data.txt", "w");
+    if (fp == NULL) {
+        printf("\nError Saving File!\n");
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        fprintf(fp, "%s %s %lld\n",
+                park[i].num,
+                park[i].type,
+                (long long)park[i].entryTime);
+    }
+
+    fclose(fp);
+}
+
+// Fee Calculation (per hour basis)
+double calculateFee(time_t entry, time_t exit) {
+    double diff = difftime(exit, entry); // seconds
+    double hours = diff / 3600.0;
+
+    if (hours < 1) hours = 1; // minimum charge
+
+    return hours * 20; // ₹20 per hour
+}
